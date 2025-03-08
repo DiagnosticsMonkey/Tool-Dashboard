@@ -1,11 +1,14 @@
 {
-  "name": "material-tailwind-dashboard-react",
+  "name": "diagnostics-monkey-dashboard",
   "private": true,
-  "version": "2.1.0",
+  "version": "0.0.1",
+  "homepage": "https://diagnosticsmonkey.github.io/Tool-Dashboard/",
   "type": "module",
   "scripts": {
     "dev": "vite",
     "build": "vite build",
+    "predeploy" : "npm run build",
+    "deploy" : "gh-pages -d dist",
     "preview": "vite preview"
   },
   "dependencies": {
@@ -23,6 +26,7 @@
     "@types/react-dom": "18.2.14",
     "@vitejs/plugin-react": "4.1.0",
     "autoprefixer": "10.4.16",
+    "gh-pages": "^6.3.0",
     "postcss": "8.4.31",
     "prettier": "3.0.3",
     "prettier-plugin-tailwindcss": "0.5.6",

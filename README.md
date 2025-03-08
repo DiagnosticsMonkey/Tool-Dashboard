@@ -33,3 +33,10 @@ Some pretty nifty WebASM OpenSCAD renderers already - We could build upon that w
 ### To consider
 
 Should 'Serial' be included as a sub-module, same for OpenSCAD. Maybe sub-trees?
+
+---
+
+## Development
+
+1. Pull project down `npm install` in `./`,
+1. `npm run dev` to launch dev server.

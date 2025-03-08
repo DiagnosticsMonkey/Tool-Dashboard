@@ -41,6 +41,13 @@ Should 'Serial' be included as a sub-module, same for OpenSCAD. Maybe sub-trees?
 1. Pull project down `npm install` in `./`,
 1. `npm run dev` to launch dev server.
 
+### Adding a new page?
+
+1. Create new page in a suitible /dir
+1. Export the function
+1. Add a new layout if required
+1. Remember to update `index.js`, `routes.jsx`, & `App.jsx`
+
 ## Deployment
 
 1. `npm run deploy` - Will hang off merge to trunk later on...

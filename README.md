@@ -40,3 +40,7 @@ Should 'Serial' be included as a sub-module, same for OpenSCAD. Maybe sub-trees?
 
 1. Pull project down `npm install` in `./`,
 1. `npm run dev` to launch dev server.
+
+## Deployment
+
+1. `npm run deploy` - Will hang off merge to trunk later on...

@@ -5,6 +5,7 @@ import {
 } from "@heroicons/react/24/solid";
 import { Home } from "@/pages/dashboard";
 import { Console, DGSD } from "@/pages/serial";
+import { Renderer } from "@/pages/openscad";
 
 const icon = {
   className: "w-5 h-5 text-inherit",
@@ -37,6 +38,18 @@ export const routes = [
         name: "dgsd",
         path: "/dgsd",
         element: <DGSD />,
+      },
+    ],
+  },
+  {
+    title: "OpenSCAD",
+    layout: "openscad",
+    pages: [
+      {
+        icon: <CommandLineIcon {...icon} />,
+        name: "renderer",
+        path: "/renderer",
+        element: <Renderer />,
       },
     ],
   },

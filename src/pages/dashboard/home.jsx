@@ -4,7 +4,6 @@ import {
   Card,
   CardHeader,
   CardBody,
-  IconButton,
   Avatar,
   Tooltip,
 } from "@material-tailwind/react";
@@ -25,34 +24,53 @@ export function Home() {
     Uncategorized: [],
   });
 
+  const [error, setError] = useState(null);
+
   useEffect(() => {
     // Fetch repos from GH API
     const fetchRepos = async () => {
-      const response = await fetch(
-        "https://api.github.com/users/DiagnosticsMonkey/repos"
-      );
-      const data = await response.json();
+      try {
+        const response = await fetch(
+          "https://api.github.com/users/DiagnosticsMonkey/repos"
+        );
 
-      // Group repos by prefix
-      const groupedRepos = data.reduce((acc, repo) => {
-        const prefix = repo.name.split("-")[0];
-        if (["Docs", "Tool", "Template", "Lib", "DevContainer", "DaFT"].includes(prefix)) {
-          if (acc[prefix]) {
-            acc[prefix].push(repo);
+        if (!response.ok) {
+          if (response.status === 403) {
+            // Handle 403 error (rate limit exceeded)
+            setError("Rate limit exceeded for GitHub API; please try again later.");
+            return; // Stop further execution
           } else {
-            acc[prefix] = [repo];
-          }
-        } else {
-          if (acc["Uncategorized"]) {
-            acc["Uncategorized"].push(repo);
-          } else {
-            acc["Uncategorized"] = [repo];
+            setError("Failed to fetch repositories.");
+            return; // Stop further execution
           }
         }
-        return acc;
-      }, { Docs: [], Tool: [], Template: [], Lib: [], DevContainer: [], DaFT: [], Uncategorized: [] });
 
-      setRepos(groupedRepos);
+        const data = await response.json();
+
+        // Group repos by prefix
+        const groupedRepos = data.reduce((acc, repo) => {
+          const prefix = repo.name.split("-")[0];
+          if (["Docs", "Tool", "Template", "Lib", "DevContainer", "DaFT"].includes(prefix)) {
+            if (acc[prefix]) {
+              acc[prefix].push(repo);
+            } else {
+              acc[prefix] = [repo];
+            }
+          } else {
+            if (acc["Uncategorized"]) {
+              acc["Uncategorized"].push(repo);
+            } else {
+              acc["Uncategorized"] = [repo];
+            }
+          }
+          return acc;
+        }, { Docs: [], Tool: [], Template: [], Lib: [], DevContainer: [], DaFT: [], Uncategorized: [] });
+
+        setRepos(groupedRepos);
+      } catch (error) {
+        setError("An error occurred while fetching repositories.");
+        console.error(error);
+      }
     };
 
     fetchRepos();
@@ -77,7 +95,7 @@ export function Home() {
         </CardHeader>
         <CardBody className="relative flex flex-col justify-between h-full">
           <Typography variant="paragraph">{repo.description || "No description"}</Typography>
-  
+
           {/* Icons */}
           <div className="absolute bottom-2 right-2 flex items-center">
             {/* GH link */}
@@ -106,29 +124,34 @@ export function Home() {
       </Card>
     );
   };
-    
 
   return (
     <div className="mt-12">
-      {["Docs", "Tool", "Template", "Lib", "DevContainer", "DaFT", "Uncategorized"].map((category) => (
-        <div key={category} className="mb-1">
-          <Typography variant="h4" className="mb-10">
-            {category}
-          </Typography>
-          <div className="grid gap-y-10 gap-x-6 md:grid-cols-2 xl:grid-cols-4">
-            {repos[category].length > 0 ? (
-              repos[category].map(renderRepoCard)
-            ) : (
-              <Typography variant="paragraph" className="text-gray-500">
-                No repositories in this category.
-              </Typography>
-            )}
+      {error ? (
+        <Typography variant="h6" className="text-red-500 mb-4">
+          {error}
+        </Typography>
+      ) : (
+        ["Docs", "Tool", "Template", "Lib", "DevContainer", "DaFT", "Uncategorized"].map((category) => (
+          <div key={category} className="mb-1">
+            <Typography variant="h4" className="mb-10">
+              {category}
+            </Typography>
+            <div className="grid gap-y-10 gap-x-6 md:grid-cols-2 xl:grid-cols-4">
+              {repos[category].length > 0 ? (
+                repos[category].map(renderRepoCard)
+              ) : (
+                <Typography variant="paragraph" className="text-gray-500">
+                  No repositories in this category.
+                </Typography>
+              )}
+            </div>
+            <div className="py-6">
+              <hr className="border-t-2 border-gray-300" />
+            </div>
           </div>
-          <div className="py-6">
-            <hr className="border-t-2 border-gray-300" />
-        </div>
-        </div>
-      ))}
+        ))
+      )}
     </div>
   );
 }

@@ -82,9 +82,6 @@ export function SerialNavbar() {
               {page}
             </Typography>
           </Breadcrumbs>
-          <Typography variant="h6" color="blue-gray">
-            {page}
-          </Typography>
         </div>
 
         <div className="flex items-center gap-4">

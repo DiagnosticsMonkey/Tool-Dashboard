@@ -1,10 +1,17 @@
-import { defineConfig } from "vite";
-import react from "@vitejs/plugin-react";
+import { HashRouter as Router, Routes, Route, Navigate } from "react-router-dom";
+import { Dashboard, Serial, OpenSCAD } from "@/layouts";
 
-export default defineConfig({
-  plugins: [react()],
-  resolve: {
-    alias: [{ find: "@", replacement: "/src" }],
-  },
-  base: "/Tool-Dashboard/",
-});
+function App() {
+  return (
+    <Router>
+      <Routes>
+        <Route path="/dashboard/*" element={<Dashboard />} />
+        <Route path="/serial/*" element={<Serial />} />
+        <Route path="/openscad/*" element={<OpenSCAD />} />
+        <Route path="*" element={<Navigate to="/dashboard/home" replace />} />
+      </Routes>
+    </Router>
+  );
+}
+
+export default App;

@@ -43,9 +43,7 @@ Footer.defaultProps = {
   brandName: "Diagnostics Monkey",
   brandLink: "https://github.com/DiagnosticsMonkey",
   routes: [
-    { name: "Amir Karimi", path: "https://github.com/akEmbeddedSW" },
-    { name: "David Jewsbury", path: "https://github.com/Hi-Im-David" },
-    { name: "James Marsden", path: "https://github.com/PandiTAKTAK" },
+    { name: "Who we are.", path: "https://github.com/orgs/DiagnosticsMonkey/people" },
   ],
 };
 

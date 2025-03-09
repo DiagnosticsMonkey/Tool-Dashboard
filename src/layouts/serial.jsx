@@ -21,7 +21,7 @@ export function Serial() {
         <Sidenav
           routes={routes}
           brandImg={
-            sidenavType === "dark" ? "/img/monkey.png" : "/img/monkey_dark.png"
+            sidenavType === "dark" ? "./img/monkey.png" : "./img/monkey_dark.png"
           }
         />
         <div className="p-4 xl:ml-80">

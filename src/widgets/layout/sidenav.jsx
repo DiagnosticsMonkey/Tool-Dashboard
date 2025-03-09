@@ -12,7 +12,7 @@ export function Sidenav({ brandImg, brandName, routes }) {
   const [controller, dispatch] = useMaterialTailwindController();
   const { sidenavColor, sidenavType, openSidenav } = controller;
   const sidenavTypes = {
-    dark: "bg-gradient-to-br from-gray-800 to-gray-900",
+    dark: "bg-gradient-to-br from-gray-700 to-gray-800",
     white: "bg-white shadow-sm",
     transparent: "bg-transparent",
   };
@@ -21,16 +21,19 @@ export function Sidenav({ brandImg, brandName, routes }) {
     <aside
       className={`${sidenavTypes[sidenavType]} ${
         openSidenav ? "translate-x-0" : "-translate-x-80"
-      } fixed inset-0 z-50 my-4 ml-4 h-[calc(100vh-32px)] w-72 rounded-xl transition-transform duration-300 xl:translate-x-0 border border-blue-gray-100`}
+      } fixed inset-0 z-50 my-4 ml-4 h-[calc(100vh-32px)] w-72 rounded-xl transition-transform duration-300 border border-blue-gray-100 xl:translate-x-0`}
     >
       <div
         className={`relative`}
       >
         <Link to="/dashboard/home/" className="py-6 px-8 text-center">
           <Typography
-            variant="h6"
+            variant="h5"
             color={sidenavType === "dark" ? "white" : "blue-gray"}
+            className="flex flex-col items-center justify-center"
           >
+            <img src={brandImg} alt="Diagnostics logo" className="h-20 w-20 mr-2" />
+            <hr className="my-4 w-1/2 border-t-2 border-gray-300" />
             {brandName}
           </Typography>
         </Link>
@@ -95,7 +98,7 @@ export function Sidenav({ brandImg, brandName, routes }) {
 }
 
 Sidenav.defaultProps = {
-  brandImg: "/img/monkey_dark.png",
+  brandImg: "./img/monkey_dark.png",
   brandName: "Diagnostics Dashboard",
 };
 

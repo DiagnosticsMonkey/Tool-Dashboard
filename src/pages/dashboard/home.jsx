@@ -8,9 +8,13 @@ import {
   Avatar,
   Tooltip,
 } from "@material-tailwind/react";
-import { ArrowUpIcon, GlobeAltIcon } from "@heroicons/react/24/outline";
+import { GlobeAltIcon, CodeBracketIcon } from "@heroicons/react/24/outline";
+import { useMaterialTailwindController } from "@/context";
 
 export function Home() {
+  const [controller] = useMaterialTailwindController();
+  const { sidenavColor } = controller;
+
   const [repos, setRepos] = useState({
     Docs: [],
     Tool: [],
@@ -72,28 +76,27 @@ export function Home() {
           </Tooltip>
         </CardHeader>
         <CardBody className="relative flex flex-col justify-between h-full">
-          <Typography variant="body2">{repo.description || "No description"}</Typography>
+          <Typography variant="paragraph">{repo.description || "No description"}</Typography>
   
           {/* Icons */}
           <div className="absolute bottom-2 right-2 flex items-center">
             {/* GH link */}
-            <a href={repo.html_url} target="_blank" rel="noopener noreferrer">
-              <IconButton color="blue" variant="text">
-                <img
-                  src="https://github.githubassets.com/images/modules/logos_page/GitHub-Mark.png"
-                  alt="GitHub"
-                  className="h-5 w-5"
-                />
-              </IconButton>
+            <a
+              href={repo.html_url}
+              target="_blank"
+              rel="noopener noreferrer"
+              className={`ml-3 text-${sidenavColor}-500`}
+            >
+              <CodeBracketIcon className="h-5 w-5 mr-1" />
             </a>
-  
+            
             {/* If homepage link, add URL */}
             {repo.homepage && (
               <a
                 href={repo.homepage}
                 target="_blank"
                 rel="noopener noreferrer"
-                className="ml-3 text-blue-500 flex items-center"
+                className={`ml-3 text-${sidenavColor}-500 flex items-center`}
               >
                 <GlobeAltIcon className="h-5 w-5 mr-1" />
               </a>
@@ -116,7 +119,7 @@ export function Home() {
             {repos[category].length > 0 ? (
               repos[category].map(renderRepoCard)
             ) : (
-              <Typography variant="body2" className="text-gray-500">
+              <Typography variant="paragraph" className="text-gray-500">
                 No repositories in this category.
               </Typography>
             )}

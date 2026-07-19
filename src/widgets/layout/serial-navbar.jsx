@@ -118,7 +118,7 @@ export function SerialNavbar() {
                 {settings.stopBits}
               </Button>
             </PopoverHandler>
-            <PopoverContent className="z-50 flex w-72 flex-col gap-4">
+            <PopoverContent className="z-50 flex w-80 flex-col gap-5 p-4">
               <Typography variant="h6" color="blue-gray">
                 Port Settings
               </Typography>
@@ -134,12 +134,13 @@ export function SerialNavbar() {
                   </Option>
                 ))}
               </Select>
-              <div className="flex gap-2">
+              <div className="grid grid-cols-2 gap-4">
                 <Select
                   label="Data bits"
                   value={String(settings.dataBits)}
                   onChange={(v) => updateSetting("dataBits", Number(v))}
                   disabled={isConnected}
+                  containerProps={{ className: "!min-w-0" }}
                 >
                   <Option value="7">7</Option>
                   <Option value="8">8</Option>
@@ -149,17 +150,17 @@ export function SerialNavbar() {
                   value={String(settings.stopBits)}
                   onChange={(v) => updateSetting("stopBits", Number(v))}
                   disabled={isConnected}
+                  containerProps={{ className: "!min-w-0" }}
                 >
                   <Option value="1">1</Option>
                   <Option value="2">2</Option>
                 </Select>
-              </div>
-              <div className="flex gap-2">
                 <Select
                   label="Parity"
                   value={settings.parity}
                   onChange={(v) => updateSetting("parity", v)}
                   disabled={isConnected}
+                  containerProps={{ className: "!min-w-0" }}
                 >
                   <Option value="none">None</Option>
                   <Option value="even">Even</Option>
@@ -170,6 +171,7 @@ export function SerialNavbar() {
                   value={settings.flowControl}
                   onChange={(v) => updateSetting("flowControl", v)}
                   disabled={isConnected}
+                  containerProps={{ className: "!min-w-0" }}
                 >
                   <Option value="none">None</Option>
                   <Option value="hardware">Hardware</Option>

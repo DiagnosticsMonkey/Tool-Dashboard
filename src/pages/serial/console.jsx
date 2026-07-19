@@ -23,18 +23,12 @@ import {
 import {
   TrashIcon,
   ArrowDownTrayIcon,
-  MagnifyingGlassIcon,
   PlayIcon,
   StopIcon,
   PaperAirplaneIcon,
-  SignalIcon,
-  SignalSlashIcon,
   ArrowsUpDownIcon,
 } from "@heroicons/react/24/solid";
-import {
-  WebSerialHandler,
-  BAUD_RATES,
-} from "@/context/webserialhandler";
+import { WebSerialHandler } from "@/context/webserialhandler";
 
 const LINE_ENDING_OPTIONS = [
   { value: "none", label: "No line ending" },
@@ -65,23 +59,15 @@ export function Console() {
   const {
     isSupported,
     isConnected,
-    isBusy,
     logs,
     settings,
-    setSettings,
-    connect,
-    disconnect,
     sendData,
     clearLogs,
     downloadLog,
-    detectBaudRate,
-    detectStatus,
     startPattern,
     stopPattern,
     patternRunning,
     patterns,
-    autoReconnect,
-    setAutoReconnect,
     rxCount,
     txCount,
   } = useContext(WebSerialHandler);
@@ -148,9 +134,6 @@ export function Console() {
     }
   };
 
-  const updateSetting = (key, value) =>
-    setSettings((s) => ({ ...s, [key]: value }));
-
   return (
     <div className="mx-auto my-8 flex max-w-screen-xl flex-col gap-6">
       {!isSupported && (
@@ -163,114 +146,6 @@ export function Console() {
           </CardBody>
         </Card>
       )}
-
-      {/* ---------- Port settings ---------- */}
-      <Card>
-        <CardBody className="flex flex-wrap items-end gap-4 p-4">
-          <div className="w-36">
-            <Select
-              label="Baud rate"
-              value={String(settings.baudRate)}
-              onChange={(v) => updateSetting("baudRate", Number(v))}
-              disabled={isConnected}
-            >
-              {BAUD_RATES.map((r) => (
-                <Option key={r} value={String(r)}>
-                  {r}
-                </Option>
-              ))}
-            </Select>
-          </div>
-          <div className="w-28">
-            <Select
-              label="Data bits"
-              value={String(settings.dataBits)}
-              onChange={(v) => updateSetting("dataBits", Number(v))}
-              disabled={isConnected}
-            >
-              <Option value="7">7</Option>
-              <Option value="8">8</Option>
-            </Select>
-          </div>
-          <div className="w-28">
-            <Select
-              label="Stop bits"
-              value={String(settings.stopBits)}
-              onChange={(v) => updateSetting("stopBits", Number(v))}
-              disabled={isConnected}
-            >
-              <Option value="1">1</Option>
-              <Option value="2">2</Option>
-            </Select>
-          </div>
-          <div className="w-32">
-            <Select
-              label="Parity"
-              value={settings.parity}
-              onChange={(v) => updateSetting("parity", v)}
-              disabled={isConnected}
-            >
-              <Option value="none">None</Option>
-              <Option value="even">Even</Option>
-              <Option value="odd">Odd</Option>
-            </Select>
-          </div>
-          <div className="w-36">
-            <Select
-              label="Flow control"
-              value={settings.flowControl}
-              onChange={(v) => updateSetting("flowControl", v)}
-              disabled={isConnected}
-            >
-              <Option value="none">None</Option>
-              <Option value="hardware">Hardware</Option>
-            </Select>
-          </div>
-
-          <div className="ml-auto flex items-center gap-2">
-            <Switch
-              label={
-                <Typography variant="small" color="blue-gray">
-                  Auto-reconnect
-                </Typography>
-              }
-              checked={autoReconnect}
-              onChange={(e) => setAutoReconnect(e.target.checked)}
-              crossOrigin=""
-            />
-            <Tooltip content="Try common baud rates and pick the one producing readable data (device must be transmitting)">
-              <Button
-                variant="outlined"
-                size="sm"
-                color="blue-gray"
-                className="flex items-center gap-2"
-                onClick={() => detectBaudRate()}
-                disabled={isConnected || isBusy}
-              >
-                <MagnifyingGlassIcon className="h-4 w-4" />
-                {detectStatus || "Detect baud"}
-              </Button>
-            </Tooltip>
-            <Button
-              size="sm"
-              color={isConnected ? "red" : "green"}
-              className="flex items-center gap-2"
-              onClick={() => (isConnected ? disconnect() : connect())}
-              disabled={isBusy || !isSupported}
-            >
-              {isConnected ? (
-                <>
-                  <SignalSlashIcon className="h-4 w-4" /> Disconnect
-                </>
-              ) : (
-                <>
-                  <SignalIcon className="h-4 w-4" /> Connect
-                </>
-              )}
-            </Button>
-          </div>
-        </CardBody>
-      </Card>
 
       {/* ---------- Terminal ---------- */}
       <Card>
@@ -370,7 +245,7 @@ export function Console() {
               <span className="text-gray-600">
                 {isConnected
                   ? "Waiting for data..."
-                  : "Not connected. Configure the port above and hit Connect."}
+                  : "Not connected. Use the connection controls in the navbar."}
               </span>
             )}
           </div>

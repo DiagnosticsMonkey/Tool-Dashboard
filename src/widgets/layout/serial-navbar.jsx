@@ -1,23 +1,34 @@
-import { useContext, useState, useEffect } from "react";
+import { useContext } from "react";
 import { useLocation, Link } from "react-router-dom";
 import {
   Navbar,
   Typography,
   IconButton,
+  Button,
   Breadcrumbs,
+  Chip,
+  Select,
+  Option,
+  Switch,
+  Tooltip,
+  Popover,
+  PopoverHandler,
+  PopoverContent,
 } from "@material-tailwind/react";
 import {
   Cog6ToothIcon,
   Bars3Icon,
   SignalSlashIcon,
   SignalIcon,
+  AdjustmentsHorizontalIcon,
+  MagnifyingGlassIcon,
 } from "@heroicons/react/24/solid";
 import {
   useMaterialTailwindController,
   setOpenConfigurator,
   setOpenSidenav,
 } from "@/context";
-import { WebSerialHandler } from "@/context/webserialhandler";
+import { WebSerialHandler, BAUD_RATES } from "@/context/webserialhandler";
 
 export function SerialNavbar() {
   const [controller, dispatch] = useMaterialTailwindController();
@@ -25,27 +36,22 @@ export function SerialNavbar() {
   const { pathname } = useLocation();
   const [layout, page] = pathname.split("/").filter((el) => el !== "");
 
-  const { isConnected, connect, disconnect } = useContext(WebSerialHandler);
-  const [isProcessing, setIsProcessing] = useState(false); // Prevent rapid clicks
+  const {
+    isSupported,
+    isConnected,
+    isBusy,
+    connect,
+    disconnect,
+    settings,
+    setSettings,
+    detectBaudRate,
+    detectStatus,
+    autoReconnect,
+    setAutoReconnect,
+  } = useContext(WebSerialHandler);
 
-  // Log the connection state to debug
-  useEffect(() => {
-    console.log("Connection status:", isConnected);
-  }, [isConnected]);
-
-  const handleConnection = async () => {
-    if (isProcessing) return; // Prevent multiple actions
-
-    setIsProcessing(true); // Lock the button during processing
-
-    if (isConnected) {
-      await disconnect(); // Disconnect
-    } else {
-      await connect(); // Connect
-    }
-
-    setIsProcessing(false); // Allow further actions
-  };
+  const updateSetting = (key, value) =>
+    setSettings((s) => ({ ...s, [key]: value }));
 
   return (
     <Navbar
@@ -84,25 +90,130 @@ export function SerialNavbar() {
           </Breadcrumbs>
         </div>
 
-        <div className="flex items-center gap-4">
+        <div className="flex flex-wrap items-center gap-3">
           {/* Connection Status */}
-          <Typography variant="small" color="blue-gray">
-            {isConnected ? "Connected" : "Disconnected"}
-          </Typography>
-
-          {/* Connection Button */}
-          <IconButton
-            variant="text"
+          <Chip
+            size="sm"
+            variant="ghost"
             color={isConnected ? "green" : "red"}
-            onClick={handleConnection}
-            disabled={isProcessing}
-          >
-            {isConnected ? (
-              <SignalIcon className="h-6 w-6 text-green-500" />
-            ) : (
-              <SignalSlashIcon className="h-6 w-6 text-red-500" />
-            )}
-          </IconButton>
+            value={
+              isConnected
+                ? `Connected @ ${settings.baudRate}`
+                : detectStatus || "Disconnected"
+            }
+          />
+
+          {/* Port settings popover */}
+          <Popover placement="bottom-end">
+            <PopoverHandler>
+              <Button
+                variant="text"
+                size="sm"
+                color="blue-gray"
+                className="flex items-center gap-2 normal-case"
+              >
+                <AdjustmentsHorizontalIcon className="h-5 w-5" />
+                {settings.baudRate} {settings.dataBits}
+                {settings.parity[0].toUpperCase()}
+                {settings.stopBits}
+              </Button>
+            </PopoverHandler>
+            <PopoverContent className="z-50 flex w-72 flex-col gap-4">
+              <Typography variant="h6" color="blue-gray">
+                Port Settings
+              </Typography>
+              <Select
+                label="Baud rate"
+                value={String(settings.baudRate)}
+                onChange={(v) => updateSetting("baudRate", Number(v))}
+                disabled={isConnected}
+              >
+                {BAUD_RATES.map((r) => (
+                  <Option key={r} value={String(r)}>
+                    {r}
+                  </Option>
+                ))}
+              </Select>
+              <div className="flex gap-2">
+                <Select
+                  label="Data bits"
+                  value={String(settings.dataBits)}
+                  onChange={(v) => updateSetting("dataBits", Number(v))}
+                  disabled={isConnected}
+                >
+                  <Option value="7">7</Option>
+                  <Option value="8">8</Option>
+                </Select>
+                <Select
+                  label="Stop bits"
+                  value={String(settings.stopBits)}
+                  onChange={(v) => updateSetting("stopBits", Number(v))}
+                  disabled={isConnected}
+                >
+                  <Option value="1">1</Option>
+                  <Option value="2">2</Option>
+                </Select>
+              </div>
+              <div className="flex gap-2">
+                <Select
+                  label="Parity"
+                  value={settings.parity}
+                  onChange={(v) => updateSetting("parity", v)}
+                  disabled={isConnected}
+                >
+                  <Option value="none">None</Option>
+                  <Option value="even">Even</Option>
+                  <Option value="odd">Odd</Option>
+                </Select>
+                <Select
+                  label="Flow control"
+                  value={settings.flowControl}
+                  onChange={(v) => updateSetting("flowControl", v)}
+                  disabled={isConnected}
+                >
+                  <Option value="none">None</Option>
+                  <Option value="hardware">Hardware</Option>
+                </Select>
+              </div>
+              <Switch
+                label={
+                  <Typography variant="small" color="blue-gray">
+                    Auto-reconnect
+                  </Typography>
+                }
+                checked={autoReconnect}
+                onChange={(e) => setAutoReconnect(e.target.checked)}
+                crossOrigin=""
+              />
+              <Button
+                variant="outlined"
+                size="sm"
+                color="blue-gray"
+                className="flex items-center justify-center gap-2"
+                onClick={() => detectBaudRate()}
+                disabled={isConnected || isBusy}
+              >
+                <MagnifyingGlassIcon className="h-4 w-4" />
+                {detectStatus || "Auto-detect baud"}
+              </Button>
+            </PopoverContent>
+          </Popover>
+
+          {/* Connect / Disconnect */}
+          <Tooltip content={isConnected ? "Disconnect" : "Connect"}>
+            <IconButton
+              variant="text"
+              color={isConnected ? "green" : "red"}
+              onClick={() => (isConnected ? disconnect() : connect())}
+              disabled={isBusy || !isSupported}
+            >
+              {isConnected ? (
+                <SignalIcon className="h-6 w-6 text-green-500" />
+              ) : (
+                <SignalSlashIcon className="h-6 w-6 text-red-500" />
+              )}
+            </IconButton>
+          </Tooltip>
 
           <IconButton
             variant="text"

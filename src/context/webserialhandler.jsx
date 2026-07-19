@@ -64,6 +64,14 @@ export const WebSerialProvider = ({ children }) => {
   const autoReconnectRef = useRef(autoReconnect);
   const encoder = useRef(new TextEncoder());
   const decoder = useRef(new TextDecoder());
+  const lineSubscribersRef = useRef(new Set());
+
+  // Subscribe to complete RX lines (e.g. for protocol parsing).
+  // Returns an unsubscribe function.
+  const subscribeLine = useCallback((fn) => {
+    lineSubscribersRef.current.add(fn);
+    return () => lineSubscribersRef.current.delete(fn);
+  }, []);
 
   useEffect(() => {
     settingsRef.current = settings;
@@ -94,6 +102,19 @@ export const WebSerialProvider = ({ children }) => {
     rxBufferRef.current += text;
     const parts = rxBufferRef.current.split(/\r\n|\n|\r/);
     rxBufferRef.current = parts.pop(); // keep trailing partial line
+
+    // Notify line subscribers of each complete line
+    for (const line of parts) {
+      if (line.length) {
+        for (const fn of lineSubscribersRef.current) {
+          try {
+            fn(line);
+          } catch (e) {
+            /* subscriber error - don't break the read loop */
+          }
+        }
+      }
+    }
 
     setLogs((prev) => {
       let next = [...prev];
@@ -558,6 +579,7 @@ export const WebSerialProvider = ({ children }) => {
         sendData,
         sendBytes,
         setSignals,
+        subscribeLine,
         clearLogs,
         downloadLog,
         detectBaudRate,

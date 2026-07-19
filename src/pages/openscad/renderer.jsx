@@ -10,6 +10,7 @@ import {
   CardBody,
   Button,
   IconButton,
+  Input,
   Select,
   Option,
   Chip,
@@ -21,6 +22,7 @@ import {
   ArrowDownTrayIcon,
   CubeIcon,
   ArrowPathIcon,
+  CloudArrowDownIcon,
 } from "@heroicons/react/24/solid";
 import * as THREE from "three";
 import { STLLoader } from "three/examples/jsm/loaders/STLLoader.js";
@@ -89,6 +91,71 @@ difference() {
 `,
   },
 };
+
+// ---------------------------------------------------------------------------
+// Remote script loading
+// ---------------------------------------------------------------------------
+
+// Convert common GitHub URL shapes to raw content URLs (CORS-friendly)
+function toRawUrl(url) {
+  let m = url.match(
+    /^https?:\/\/github\.com\/([^/]+)\/([^/]+)\/(?:blob|raw)\/(.+)$/
+  );
+  if (m) return `https://raw.githubusercontent.com/${m[1]}/${m[2]}/${m[3]}`;
+  // Gist file links
+  m = url.match(/^https?:\/\/gist\.github\.com\/([^/]+)\/([a-f0-9]+)/);
+  if (m) return `https://gist.githubusercontent.com/${m[1]}/${m[2]}/raw`;
+  return url;
+}
+
+const INCLUDE_RE = /(?:include|use)\s*<([^>]+)>/g;
+const MAX_DEP_FILES = 25;
+
+// Fetch a .scad file and (best-effort) its include/use dependencies,
+// resolved relative to the main file's location.
+async function fetchScadWithIncludes(url) {
+  const rawUrl = toRawUrl(url.trim());
+  const base = rawUrl.slice(0, rawUrl.lastIndexOf("/") + 1);
+  const notes = [];
+
+  const res = await fetch(rawUrl);
+  if (!res.ok) throw new Error(`HTTP ${res.status} fetching ${rawUrl}`);
+  const source = await res.text();
+
+  const files = {};
+  const seen = new Set();
+  const queue = [];
+  const enqueue = (text) => {
+    for (const match of text.matchAll(INCLUDE_RE)) {
+      const dep = match[1].trim();
+      if (!seen.has(dep)) {
+        seen.add(dep);
+        queue.push(dep);
+      }
+    }
+  };
+  enqueue(source);
+
+  while (queue.length && Object.keys(files).length < MAX_DEP_FILES) {
+    const dep = queue.shift();
+    try {
+      // Resolve relative paths (handles ../ etc.) against the main file
+      const depUrl = new URL(dep, base).href;
+      const depRes = await fetch(depUrl);
+      if (!depRes.ok) throw new Error(`HTTP ${depRes.status}`);
+      const content = await depRes.text();
+      files[dep] = content;
+      enqueue(content); // nested includes
+      notes.push(`Loaded dependency: ${dep}`);
+    } catch (e) {
+      notes.push(
+        `Could not load <${dep}> (${e.message}) — if it's a system library it won't resolve in the browser.`
+      );
+    }
+  }
+
+  return { source, files, notes, rawUrl };
+}
 
 // ---------------------------------------------------------------------------
 // Three.js STL viewer
@@ -213,9 +280,36 @@ export function Renderer() {
   const [rendering, setRendering] = useState(false);
   const [renderTime, setRenderTime] = useState(null);
   const [engineReady, setEngineReady] = useState(false);
+  const [sourceUrl, setSourceUrl] = useState("");
+  const [loadingUrl, setLoadingUrl] = useState(false);
+  const [libFiles, setLibFiles] = useState({});
 
   const workerRef = useRef(null);
   const renderIdRef = useRef(0);
+
+  const handleLoadUrl = useCallback(async () => {
+    if (!sourceUrl.trim()) return;
+    setLoadingUrl(true);
+    setLog([]);
+    try {
+      const { source, files, notes, rawUrl } =
+        await fetchScadWithIncludes(sourceUrl);
+      setCode(source);
+      setLibFiles(files);
+      setLog([
+        `Loaded ${rawUrl}`,
+        ...notes,
+        `Ready — hit Render.`,
+      ]);
+    } catch (e) {
+      setLog([
+        `Failed to load: ${e.message}`,
+        "Check the URL points at a raw file or a GitHub blob page, and the repo is public.",
+      ]);
+    } finally {
+      setLoadingUrl(false);
+    }
+  }, [sourceUrl]);
 
   const spawnWorker = useCallback(() => {
     const worker = new Worker(
@@ -251,8 +345,9 @@ export function Renderer() {
     workerRef.current.postMessage({
       id: renderIdRef.current,
       source: code,
+      files: libFiles,
     });
-  }, [code, spawnWorker]);
+  }, [code, libFiles, spawnWorker]);
 
   const handleCancel = useCallback(() => {
     workerRef.current?.terminate();
@@ -308,6 +403,7 @@ export function Renderer() {
                     value="demo"
                     onChange={(v) => {
                       setCode(EXAMPLES[v].code);
+                      setLibFiles({});
                     }}
                   >
                     {Object.entries(EXAMPLES).map(([key, ex]) => (
@@ -340,6 +436,42 @@ export function Renderer() {
                 )}
               </div>
             </div>
+            {/* Load from URL */}
+            <div className="flex items-center gap-3">
+              <div className="flex-1">
+                <Input
+                  label="Load .scad from URL (GitHub blob/raw link)"
+                  value={sourceUrl}
+                  onChange={(e) => setSourceUrl(e.target.value)}
+                  onKeyDown={(e) => {
+                    if (e.key === "Enter" && !loadingUrl) handleLoadUrl();
+                  }}
+                  crossOrigin=""
+                />
+              </div>
+              <Button
+                size="sm"
+                variant="outlined"
+                color="blue-gray"
+                className="flex items-center gap-2"
+                onClick={handleLoadUrl}
+                disabled={loadingUrl || !sourceUrl.trim()}
+              >
+                {loadingUrl ? (
+                  <ArrowPathIcon className="h-4 w-4 animate-spin" />
+                ) : (
+                  <CloudArrowDownIcon className="h-4 w-4" />
+                )}
+                Load
+              </Button>
+            </div>
+            {Object.keys(libFiles).length > 0 && (
+              <Typography variant="small" className="text-blue-gray-400">
+                {Object.keys(libFiles).length} dependency file
+                {Object.keys(libFiles).length > 1 ? "s" : ""} loaded:{" "}
+                {Object.keys(libFiles).join(", ")}
+              </Typography>
+            )}
             <textarea
               value={code}
               onChange={(e) => setCode(e.target.value)}

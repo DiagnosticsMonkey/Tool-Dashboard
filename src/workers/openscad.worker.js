@@ -15,9 +15,31 @@ const OUTPUT = "/output.stl";
 let logSink = [];
 const capture = (t) => logSink.push(String(t));
 
-async function attempt(source, args) {
+// Create nested directories for a file path like "lib/gears/gear.scad"
+function mkdirs(FS, filePath) {
+  const parts = filePath.split("/").slice(0, -1);
+  let dir = "";
+  for (const part of parts) {
+    if (!part) continue;
+    dir += "/" + part;
+    try {
+      FS.mkdir(dir);
+    } catch {
+      /* exists */
+    }
+  }
+}
+
+async function attempt(source, args, files = {}) {
   const os = await createOpenSCAD({ print: capture, printErr: capture });
   const instance = os.getInstance();
+  // Extra files (e.g. include/use dependencies fetched from a repo),
+  // written relative to / so includes resolve against /input.scad
+  for (const [path, content] of Object.entries(files)) {
+    const clean = path.replace(/^\/+/, "");
+    mkdirs(instance.FS, "/" + clean);
+    instance.FS.writeFile("/" + clean, content);
+  }
   instance.FS.writeFile("/input.scad", source);
   try {
     instance.callMain(["/input.scad", "-o", OUTPUT, ...args]);
@@ -31,27 +53,27 @@ async function attempt(source, args) {
   }
 }
 
-async function render(source, extraArgs = []) {
+async function render(source, extraArgs = [], files = {}) {
   logSink = [];
   // Try the fast manifold backend + binary STL first; fall back to the
   // plain invocation for builds/scripts that don't support those flags.
-  let stl = await attempt(source, [
-    "--enable=manifold",
-    "--export-format=binstl",
-    ...extraArgs,
-  ]);
+  let stl = await attempt(
+    source,
+    ["--enable=manifold", "--export-format=binstl", ...extraArgs],
+    files
+  );
   if (!stl) {
     logSink.push("--- retrying with default backend ---");
-    stl = await attempt(source, extraArgs);
+    stl = await attempt(source, extraArgs, files);
   }
   return { stl, log: logSink };
 }
 
 self.onmessage = async (e) => {
-  const { id, source, args } = e.data;
+  const { id, source, args, files } = e.data;
   const started = performance.now();
   try {
-    const { stl, log } = await render(source, args);
+    const { stl, log } = await render(source, args, files);
     const timeMs = Math.round(performance.now() - started);
     if (stl) {
       const buffer = stl.buffer.slice(

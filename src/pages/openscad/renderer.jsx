@@ -3,6 +3,7 @@ import React, {
   useRef,
   useEffect,
   useCallback,
+  useMemo,
 } from "react";
 import {
   Typography,
@@ -34,7 +35,7 @@ import { OrbitControls } from "three/examples/jsm/controls/OrbitControls.js";
 
 const EXAMPLES = {
   demo: {
-    label: "Demo — rounded plate",
+    label: "Rounded plate",
     code: `// Rounded mounting plate
 $fn = 64;
 
@@ -91,6 +92,218 @@ difference() {
 `,
   },
 };
+
+// ---------------------------------------------------------------------------
+// OpenSCAD Customiser parameter parsing
+// ---------------------------------------------------------------------------
+
+function parseDefaultValue(raw) {
+  const t = raw.trim();
+  if (/^".*"$/.test(t)) return { type: "string", value: t.slice(1, -1) };
+  if (t === "true" || t === "false")
+    return { type: "bool", value: t === "true" };
+  if (/^[-+]?[0-9.]+(e[-+]?\d+)?$/i.test(t) && !isNaN(Number(t)))
+    return { type: "number", value: Number(t) };
+  return null;
+}
+
+function parseAnnotation(ann) {
+  if (!ann) return null;
+  const m = ann.trim().match(/^\[(.*)\]$/s);
+  if (!m) return null;
+  const body = m[1].trim();
+
+  if (body.includes(",")) {
+    // Dropdown: [a, b, c] or [value:label, ...]
+    const options = body.split(",").map((s) => {
+      const t = s.trim();
+      const i = t.indexOf(":");
+      return i > -1
+        ? { value: t.slice(0, i).trim(), label: t.slice(i + 1).trim() }
+        : { value: t, label: t };
+    });
+    return { kind: "enum", options };
+  }
+
+  const nums = body.split(":").map((s) => Number(s.trim()));
+  if (nums.length && nums.every((n) => !isNaN(n))) {
+    if (nums.length === 1) return { kind: "range", min: 0, max: nums[0] };
+    if (nums.length === 2)
+      return { kind: "range", min: nums[0], max: nums[1] };
+    return { kind: "range", min: nums[0], step: nums[1], max: nums[2] };
+  }
+  return null;
+}
+
+function parseCustomiserParams(code) {
+  const lines = code.split(/\r?\n/);
+  const groups = [];
+  let current = { name: "Parameters", params: [] };
+  let pendingDesc = null;
+
+  const pushGroup = () => {
+    if (current.params.length && !/^hidden$/i.test(current.name)) {
+      groups.push(current);
+    }
+  };
+
+  for (const line of lines) {
+    if (/^\s*(module|function)\s/.test(line)) break;
+
+    const gm = line.match(/^\s*\/\*\s*\[(.+?)\]\s*\*\/\s*$/);
+    if (gm) {
+      pushGroup();
+      current = { name: gm[1].trim(), params: [] };
+      pendingDesc = null;
+      continue;
+    }
+
+    const cm = line.match(/^\s*\/\/\s?(.*)$/);
+    if (cm) {
+      pendingDesc = cm[1].trim() || null;
+      continue;
+    }
+
+    const am = line.match(
+      /^\s*([A-Za-z_$][A-Za-z0-9_]*)\s*=\s*([^;]+);\s*(?:\/\/\s*(.*))?$/
+    );
+    if (am) {
+      const [, name, rawVal, annotation] = am;
+      const def = parseDefaultValue(rawVal);
+      if (def) {
+        current.params.push({
+          name,
+          desc: pendingDesc,
+          type: def.type,
+          defaultValue: def.value,
+          annotation: parseAnnotation(annotation),
+        });
+      }
+      pendingDesc = null;
+      continue;
+    }
+
+    if (line.trim() !== "") pendingDesc = null;
+  }
+  pushGroup();
+  return groups;
+}
+
+// Format a value as a -D override argument
+function toDefineArg(param, value) {
+  if (param.type === "string") return `${param.name}=${JSON.stringify(String(value))}`;
+  if (param.type === "bool") return `${param.name}=${value ? "true" : "false"}`;
+  return `${param.name}=${Number(value)}`;
+}
+
+function ParamControl({ param, value, onChange }) {
+  const current = value ?? param.defaultValue;
+  const ann = param.annotation;
+  const modified = value !== undefined && value !== param.defaultValue;
+
+  const label = (
+    <div className="flex items-center justify-between">
+      <Typography
+        variant="small"
+        color={modified ? "blue" : "blue-gray"}
+        className="font-medium"
+      >
+        {param.desc || param.name}
+      </Typography>
+      {param.desc && (
+        <Typography variant="small" className="font-mono text-xs text-blue-gray-300">
+          {param.name}
+        </Typography>
+      )}
+    </div>
+  );
+
+  if (ann?.kind === "enum") {
+    return (
+      <div className="flex flex-col gap-1">
+        {label}
+        <Select
+          value={String(current)}
+          onChange={(v) =>
+            onChange(param.type === "number" ? Number(v) : v)
+          }
+          containerProps={{ className: "!min-w-0" }}
+        >
+          {ann.options.map((o) => (
+            <Option key={o.value} value={o.value}>
+              {o.label}
+            </Option>
+          ))}
+        </Select>
+      </div>
+    );
+  }
+
+  if (param.type === "bool") {
+    return (
+      <div className="flex items-center justify-between gap-2">
+        {label}
+        <Switch
+          checked={Boolean(current)}
+          onChange={(e) => onChange(e.target.checked)}
+          crossOrigin=""
+        />
+      </div>
+    );
+  }
+
+  if (ann?.kind === "range" && param.type === "number") {
+    const step =
+      ann.step ??
+      (Number.isInteger(ann.min) &&
+      Number.isInteger(ann.max) &&
+      Number.isInteger(param.defaultValue)
+        ? 1
+        : 0.1);
+    return (
+      <div className="flex flex-col gap-1">
+        {label}
+        <div className="flex items-center gap-3">
+          <input
+            type="range"
+            min={ann.min}
+            max={ann.max}
+            step={step}
+            value={current}
+            onChange={(e) => onChange(Number(e.target.value))}
+            className="h-2 flex-1 cursor-pointer appearance-none rounded-lg bg-blue-gray-100 accent-blue-500"
+          />
+          <Typography
+            variant="small"
+            color="blue-gray"
+            className="w-14 text-right font-mono font-bold"
+          >
+            {current}
+          </Typography>
+        </div>
+      </div>
+    );
+  }
+
+  return (
+    <div className="flex flex-col gap-1">
+      {label}
+      <Input
+        type={param.type === "number" ? "number" : "text"}
+        value={String(current)}
+        onChange={(e) =>
+          onChange(
+            param.type === "number"
+              ? Number(e.target.value)
+              : e.target.value
+          )
+        }
+        crossOrigin=""
+        containerProps={{ className: "!min-w-0" }}
+      />
+    </div>
+  );
+}
 
 // ---------------------------------------------------------------------------
 // Remote script loading
@@ -283,9 +496,22 @@ export function Renderer() {
   const [sourceUrl, setSourceUrl] = useState("");
   const [loadingUrl, setLoadingUrl] = useState(false);
   const [libFiles, setLibFiles] = useState({});
+  const [paramValues, setParamValues] = useState({});
 
   const workerRef = useRef(null);
   const renderIdRef = useRef(0);
+
+  // Customiser parameters exposed by the current script
+  const paramGroups = useMemo(() => parseCustomiserParams(code), [code]);
+  const allParams = useMemo(
+    () => paramGroups.flatMap((g) => g.params),
+    [paramGroups]
+  );
+  const modifiedCount = allParams.filter(
+    (p) =>
+      paramValues[p.name] !== undefined &&
+      paramValues[p.name] !== p.defaultValue
+  ).length;
 
   const handleLoadUrl = useCallback(async () => {
     if (!sourceUrl.trim()) return;
@@ -296,10 +522,11 @@ export function Renderer() {
         await fetchScadWithIncludes(sourceUrl);
       setCode(source);
       setLibFiles(files);
+      setParamValues({});
       setLog([
         `Loaded ${rawUrl}`,
         ...notes,
-        `Ready — hit Render.`,
+        `Ready - hit Render.`,
       ]);
     } catch (e) {
       setLog([
@@ -342,12 +569,23 @@ export function Renderer() {
     renderIdRef.current += 1;
     setRendering(true);
     setLog([]);
+    // Apply customiser overrides as -D flags (they take precedence over
+    // the assignments in the script)
+    const defines = allParams
+      .filter(
+        (p) =>
+          paramValues[p.name] !== undefined &&
+          paramValues[p.name] !== p.defaultValue
+      )
+      .flatMap((p) => ["-D", toDefineArg(p, paramValues[p.name])]);
+
     workerRef.current.postMessage({
       id: renderIdRef.current,
       source: code,
       files: libFiles,
+      args: defines,
     });
-  }, [code, libFiles, spawnWorker]);
+  }, [code, libFiles, allParams, paramValues, spawnWorker]);
 
   const handleCancel = useCallback(() => {
     workerRef.current?.terminate();
@@ -390,6 +628,7 @@ export function Renderer() {
     <div className="mx-auto my-8 flex max-w-screen-2xl flex-col gap-6">
       <div className="grid grid-cols-1 gap-6 xl:grid-cols-2">
         {/* ---------- Editor ---------- */}
+        <div className="flex flex-col gap-6">
         <Card>
           <CardBody className="flex flex-col gap-4 p-4">
             <div className="flex flex-wrap items-center justify-between gap-3">
@@ -404,6 +643,7 @@ export function Renderer() {
                     onChange={(v) => {
                       setCode(EXAMPLES[v].code);
                       setLibFiles({});
+                      setParamValues({});
                     }}
                   >
                     {Object.entries(EXAMPLES).map(([key, ex]) => (
@@ -511,6 +751,68 @@ export function Renderer() {
             </div>
           </CardBody>
         </Card>
+
+        {/* ---------- Customiser parameters ---------- */}
+        {allParams.length > 0 && (
+          <Card>
+            <CardBody className="flex flex-col gap-5 p-4">
+              <div className="flex flex-wrap items-center justify-between gap-3">
+                <div className="flex items-center gap-3">
+                  <Typography variant="h5" color="blue-gray">
+                    Parameters
+                  </Typography>
+                  {modifiedCount > 0 && (
+                    <Chip
+                      size="sm"
+                      variant="ghost"
+                      color="blue"
+                      value={`${modifiedCount} modified`}
+                    />
+                  )}
+                </div>
+                <Button
+                  size="sm"
+                  variant="text"
+                  color="blue-gray"
+                  onClick={() => setParamValues({})}
+                  disabled={modifiedCount === 0}
+                >
+                  Reset all
+                </Button>
+              </div>
+              {paramGroups.map((group) => (
+                <div key={group.name} className="flex flex-col gap-3">
+                  <Typography
+                    variant="h6"
+                    color="blue-gray"
+                    className="border-b border-blue-gray-50 pb-1"
+                  >
+                    {group.name}
+                  </Typography>
+                  <div className="grid grid-cols-1 gap-4 md:grid-cols-2">
+                    {group.params.map((param) => (
+                      <ParamControl
+                        key={param.name}
+                        param={param}
+                        value={paramValues[param.name]}
+                        onChange={(v) =>
+                          setParamValues((prev) => ({
+                            ...prev,
+                            [param.name]: v,
+                          }))
+                        }
+                      />
+                    ))}
+                  </div>
+                </div>
+              ))}
+              <Typography variant="small" className="text-blue-gray-400">
+                Hit 'Render' after dialing in params...
+              </Typography>
+            </CardBody>
+          </Card>
+        )}
+        </div>
 
         {/* ---------- Viewer ---------- */}
         <Card>

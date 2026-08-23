@@ -22,8 +22,8 @@ graph TD
 e.g. route navigation
 
 - The outer frame navgation entry is https://diagnosticsmonkey.github.io/Tool-Dashboard/
-- serial entry is https://diagnosticsmonkey.github.io/Tool-Dashboard/Serial
-  - Console entry https://diagnosticsmonkey.github.io/Tool-Dashboard/Serial/Console or # nav
+- serial entry is https://diagnosticsmonkey.github.io/Tool-Dashboard/#/Serial
+  - Console entry https://diagnosticsmonkey.github.io/Tool-Dashboard/#/Serial/Console
 
 Rationale - Direct navigation to specific section.
 Top-level frame is our global nav. Serial not needed across all, but is needed on multiple.

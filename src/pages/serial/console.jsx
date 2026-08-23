@@ -252,8 +252,8 @@ export function Console() {
         </CardBody>
 
         {/* ---------- Send bar ---------- */}
-        <CardFooter className="flex flex-wrap items-center gap-3 p-4 pt-0">
-          <div className="min-w-[200px] flex-1">
+        <CardFooter className="flex flex-wrap items-center gap-4 p-4 pt-0">
+          <div className="w-full min-w-[12rem] flex-1 basis-64">
             <Input
               inputRef={inputRef}
               label="Send data (↑/↓ for history)"
@@ -262,13 +262,15 @@ export function Console() {
               onKeyDown={handleKeyDown}
               disabled={!isConnected}
               crossOrigin=""
+              containerProps={{ className: "!min-w-0" }}
             />
           </div>
-          <div className="w-44">
+          <div className="w-44 shrink-0">
             <Select
               label="Line ending"
               value={lineEnding}
               onChange={(v) => setLineEnding(v)}
+              containerProps={{ className: "!min-w-0" }}
             >
               {LINE_ENDING_OPTIONS.map((o) => (
                 <Option key={o.value} value={o.value}>
@@ -277,20 +279,22 @@ export function Console() {
               ))}
             </Select>
           </div>
-          <Switch
-            label={
-              <Typography variant="small" color="blue-gray">
-                Echo
-              </Typography>
-            }
-            checked={localEcho}
-            onChange={(e) => setLocalEcho(e.target.checked)}
-            crossOrigin=""
-          />
+          <div className="shrink-0">
+            <Switch
+              label={
+                <Typography variant="small" color="blue-gray">
+                  Echo
+                </Typography>
+              }
+              checked={localEcho}
+              onChange={(e) => setLocalEcho(e.target.checked)}
+              crossOrigin=""
+            />
+          </div>
           <Button
             size="sm"
             color="blue"
-            className="flex items-center gap-2"
+            className="flex shrink-0 items-center gap-2"
             onClick={handleSend}
             disabled={!isConnected || !input.length}
           >
@@ -301,63 +305,71 @@ export function Console() {
 
       {/* ---------- Test patterns ---------- */}
       <Card>
-        <CardBody className="flex flex-wrap items-end gap-4 p-4">
-          <Typography variant="h6" color="blue-gray" className="mr-2">
-            Test Patterns
-          </Typography>
-          <div className="w-60">
-            <Select
-              label="Pattern"
-              value={patternType}
-              onChange={(v) => setPatternType(v)}
-              disabled={patternRunning}
+        <CardBody className="flex flex-col gap-4 p-4">
+          <div className="flex flex-wrap items-end gap-4">
+            <Typography
+              variant="h6"
+              color="blue-gray"
+              className="shrink-0 self-center"
             >
-              {Object.entries(patterns).map(([key, label]) => (
-                <Option key={key} value={key}>
-                  {label}
-                </Option>
-              ))}
-            </Select>
+              Test Patterns
+            </Typography>
+            <div className="w-60 shrink-0">
+              <Select
+                label="Pattern"
+                value={patternType}
+                onChange={(v) => setPatternType(v)}
+                disabled={patternRunning}
+                containerProps={{ className: "!min-w-0" }}
+              >
+                {Object.entries(patterns).map(([key, label]) => (
+                  <Option key={key} value={key}>
+                    {label}
+                  </Option>
+                ))}
+              </Select>
+            </div>
+            <div className="w-36 shrink-0">
+              <Input
+                label="Interval (ms)"
+                type="number"
+                min="10"
+                value={patternInterval}
+                onChange={(e) => setPatternInterval(e.target.value)}
+                disabled={patternRunning}
+                crossOrigin=""
+                containerProps={{ className: "!min-w-0" }}
+              />
+            </div>
+            {patternRunning ? (
+              <Button
+                size="sm"
+                color="red"
+                className="flex shrink-0 items-center gap-2"
+                onClick={stopPattern}
+              >
+                <StopIcon className="h-4 w-4" /> Stop
+              </Button>
+            ) : (
+              <Button
+                size="sm"
+                color="green"
+                className="flex shrink-0 items-center gap-2"
+                onClick={() =>
+                  startPattern(patternType, {
+                    intervalMs: Math.max(10, Number(patternInterval) || 500),
+                    lineEnding,
+                  })
+                }
+                disabled={!isConnected}
+              >
+                <PlayIcon className="h-4 w-4" /> Start
+              </Button>
+            )}
           </div>
-          <div className="w-36">
-            <Input
-              label="Interval (ms)"
-              type="number"
-              min="10"
-              value={patternInterval}
-              onChange={(e) => setPatternInterval(e.target.value)}
-              disabled={patternRunning}
-              crossOrigin=""
-            />
-          </div>
-          {patternRunning ? (
-            <Button
-              size="sm"
-              color="red"
-              className="flex items-center gap-2"
-              onClick={stopPattern}
-            >
-              <StopIcon className="h-4 w-4" /> Stop
-            </Button>
-          ) : (
-            <Button
-              size="sm"
-              color="green"
-              className="flex items-center gap-2"
-              onClick={() =>
-                startPattern(patternType, {
-                  intervalMs: Math.max(10, Number(patternInterval) || 500),
-                  lineEnding,
-                })
-              }
-              disabled={!isConnected}
-            >
-              <PlayIcon className="h-4 w-4" /> Start
-            </Button>
-          )}
           <Typography variant="small" className="text-blue-gray-400">
-            Sends a repeating pattern out of TX — loop TX to RX to verify the
-            link, or use 0x55 for scope timing checks.
+            Sends a repeating pattern. Loop TX to RX to verify the
+            link.
           </Typography>
         </CardBody>
       </Card>

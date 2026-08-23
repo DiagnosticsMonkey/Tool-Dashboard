@@ -126,6 +126,7 @@ function ControlCard({ control, value, onSet }) {
             label={label || id}
             value={value != null ? String(value) : undefined}
             onChange={(v) => onSet(id, v)}
+            containerProps={{ className: "!min-w-0" }}
           >
             {(options || []).map((o) => (
               <Option key={String(o)} value={String(o)}>
@@ -268,8 +269,7 @@ export function DGSD() {
       {/* ---------- Status messages ---------- */}
       {!isConnected && (
         <Typography variant="small" className="text-blue-gray-400">
-          Not connected. Use the connection controls in the navbar — discovery
-          runs automatically once connected.
+          Not connected. Use the connection controls in the navbar.
         </Typography>
       )}
       {error && (

@@ -636,10 +636,11 @@ export function Renderer() {
                 Script
               </Typography>
               <div className="flex items-center gap-3">
-                <div className="w-52">
+                <div className="w-52 shrink-0">
                   <Select
                     label="Example"
                     value="demo"
+                    containerProps={{ className: "!min-w-0" }}
                     onChange={(v) => {
                       setCode(EXAMPLES[v].code);
                       setLibFiles({});
@@ -677,8 +678,8 @@ export function Renderer() {
               </div>
             </div>
             {/* Load from URL */}
-            <div className="flex items-center gap-3">
-              <div className="flex-1">
+            <div className="flex flex-wrap items-center gap-3">
+              <div className="min-w-[12rem] flex-1">
                 <Input
                   label="Load .scad from URL (GitHub blob/raw link)"
                   value={sourceUrl}
@@ -687,13 +688,14 @@ export function Renderer() {
                     if (e.key === "Enter" && !loadingUrl) handleLoadUrl();
                   }}
                   crossOrigin=""
+                  containerProps={{ className: "!min-w-0" }}
                 />
               </div>
               <Button
                 size="sm"
                 variant="outlined"
                 color="blue-gray"
-                className="flex items-center gap-2"
+                className="flex shrink-0 items-center gap-2"
                 onClick={handleLoadUrl}
                 disabled={loadingUrl || !sourceUrl.trim()}
               >
